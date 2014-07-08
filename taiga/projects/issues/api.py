@@ -20,7 +20,7 @@ from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework import filters
+from rest_framework import filters as rest_framework_filters
 
 from taiga.base import filters
 from taiga.base import exceptions as exc
@@ -106,8 +106,10 @@ class IssueViewSet(OCCResourceMixin, HistoryResourceMixin, WatchedResourceMixin,
     list_serializer_class = serializers.IssueSerializer
     permission_classes = (IsAuthenticated, permissions.IssuePermission)
 
-    filter_backends = (filters.IsProjectMemberFilterBackend, IssuesFilter, IssuesOrdering)
+    filter_backends = (rest_framework_filters.SearchFilter, filters.IsProjectMemberFilterBackend,
+                       IssuesFilter, IssuesOrdering)
     retrieve_exclude_filters = (IssuesFilter,)
+    search_fields = ("subject",)
 
     filter_fields = ("project",)
     order_by_fields = ("severity",
