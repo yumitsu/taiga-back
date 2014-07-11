@@ -312,7 +312,7 @@ SOUTH_MIGRATION_MODULES = {
 
 DEFAULT_AVATAR_SIZE = 80                # 80x80 pixels
 
-DEFAULT_AVATAR_URL = ''
+DEFAULT_AVATAR_URL = '/static/users/img/user-default.png'
 
 THUMBNAIL_ALIASES = {
     '': {
