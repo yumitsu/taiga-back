@@ -88,7 +88,9 @@ class SimpleRouter(BaseRouter):
             url=r'^{prefix}{trailing_slash}$',
             mapping={
                 'get': 'list',
-                'post': 'create'
+                'post': 'create',
+                'put': 'bulk_update',
+                'patch': 'bulk_partial_update'
             },
             name='{basename}-list',
             initkwargs={'suffix': 'List'}

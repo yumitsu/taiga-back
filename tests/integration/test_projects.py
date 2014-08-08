@@ -27,3 +27,15 @@ def test_api_partially_update_project(client):
     response = client.json.patch(url, data)
 
     assert response.status_code == 400
+
+
+def test_api_update_project_using_existing_name(client):
+    project1 = f.create_project()
+    project2 = f.create_project()
+    url = reverse("projects-detail", kwargs={"pk": project2.pk})
+    data = {"name": project1.name, "description": project2.description}
+
+    client.login(project2.owner)
+    response = client.json.put(url, data)
+
+    assert response.status_code == 400, response.status_code

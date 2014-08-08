@@ -67,3 +67,23 @@ def test_api_filter_by_subject(client):
 
     assert response.status_code == 200
     assert number_of_issues == 1, number_of_issues
+
+
+def test_delete_priority_with_issues(client):
+    issue = f.create_issue()
+    url = reverse("priorities-detail", kwargs={"pk": issue.priority.pk})
+
+    client.login(issue.project.owner)
+    response = client.json.delete(url)
+
+    assert response.status_code == 409, response.status_code
+
+
+def test_change_priority_of_issues(client):
+    issue = f.create_issue()
+    url = reverse("issues-list")
+
+    client.login(issue.project.owner)
+    response = client.json.patch(url, {"priority": 300000})
+
+    assert response.status_code == 204, response.content

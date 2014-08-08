@@ -113,7 +113,7 @@ class IssueViewSet(OCCResourceMixin, HistoryResourceMixin, WatchedResourceMixin,
                        IssuesFilter, IssuesOrdering)
     retrieve_exclude_filters = (IssuesFilter,)
 
-    filter_fields = ("project",)
+    filter_fields = ("project", "severity")
     search_fields = ("subject",)
     order_by_fields = ("severity",
                        "status",
@@ -152,6 +152,15 @@ class IssueViewSet(OCCResourceMixin, HistoryResourceMixin, WatchedResourceMixin,
 
         if obj.type and obj.type.project != obj.project:
             raise exc.PermissionDenied(_("You don't have permissions to set this type to this issue."))
+
+    def bulk_partial_update(self, request, **kwargs):
+        self.object_list = self.filter_queryset(self.get_queryset())
+        """To test if project filtering is being done:
+        queryset.query.where must be set and where.get_cols() must have ("<db table>", "project_id")"""
+        serializer = serializers.IssueNeighborsSerializer(data=request.DATA, partial=True)
+        if serializer.is_valid():
+            return response.Ok()
+        return response.BadRequest(serializer.errors)
 
     @list_route(methods=["POST"])
     def bulk_create(self, request, **kwargs):

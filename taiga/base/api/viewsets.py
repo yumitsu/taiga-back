@@ -19,11 +19,14 @@
 
 from functools import update_wrapper
 from django.utils.decorators import classonlymethod
+from django.db.models import deletion
+from django.utils.translation import ugettext_lazy as _
 
 from . import views
 from . import mixins
 from . import generics
 from . import pagination
+from .. import response
 
 
 class ViewSetMixin(object):
@@ -144,7 +147,15 @@ class ModelViewSet(mixins.CreateModelMixin,
     A viewset that provides default `create()`, `retrieve()`, `update()`,
     `partial_update()`, `destroy()` and `list()` actions.
     """
-    pass
+    def destroy(self, *args, **kwargs):
+        try:
+            return super().destroy(*args, **kwargs)
+        except deletion.ProtectedError as e:
+            related = ", ".join(obj._meta.model_name for obj in e.protected_objects)
+            msg = _("Cannot delete the resource because "
+                    "instances of related resources (%s) are depending on it. "
+                    "You must resolve this conflict before trying the request again.") % related
+            return response.Conflict({"message": msg})
 
 
 class ModelCrudViewSet(pagination.HeadersPaginationMixin,

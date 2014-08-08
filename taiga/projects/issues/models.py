@@ -36,8 +36,10 @@ class Issue(OCCModelMixin, WatchedModelMixin, BlockedMixin, TaggedMixin, models.
     status = models.ForeignKey("projects.IssueStatus", null=False, blank=False,
                                related_name="issues", verbose_name=_("status"))
     severity = models.ForeignKey("projects.Severity", null=False, blank=False,
+                                 on_delete=models.PROTECT,
                                  related_name="issues", verbose_name=_("severity"))
     priority = models.ForeignKey("projects.Priority", null=False, blank=False,
+                                 on_delete=models.PROTECT,
                                  related_name="issues", verbose_name=_("priority"))
     type = models.ForeignKey("projects.IssueType", null=False, blank=False,
                              related_name="issues", verbose_name=_("type"))
