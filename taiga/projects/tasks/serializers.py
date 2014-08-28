@@ -35,6 +35,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Task
+        read_only_fields = ('id', 'ref', 'created_date', 'modified_date')
 
     def get_comment(self, obj):
         return ""

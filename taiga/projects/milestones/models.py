@@ -17,6 +17,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
+from django.utils import timezone
 
 from taiga.base.utils.slug import slugify_uniquely
 from taiga.base.utils.dicts import dict_sum
@@ -39,9 +40,10 @@ class Milestone(WatchedModelMixin, models.Model):
                                 related_name="milestones", verbose_name=_("project"))
     estimated_start = models.DateField(verbose_name=_("estimated start date"))
     estimated_finish = models.DateField(verbose_name=_("estimated finish date"))
-    created_date = models.DateTimeField(auto_now_add=True, null=False, blank=False,
-                                        verbose_name=_("created date"))
-    modified_date = models.DateTimeField(auto_now=True, null=False, blank=False,
+    created_date = models.DateTimeField(null=False, blank=False,
+                                        verbose_name=_("created date"),
+                                        default=timezone.now)
+    modified_date = models.DateTimeField(null=False, blank=False,
                                          verbose_name=_("modified date"))
     closed = models.BooleanField(default=False, null=False, blank=True,
                                  verbose_name=_("is closed"))
@@ -49,6 +51,7 @@ class Milestone(WatchedModelMixin, models.Model):
                                       verbose_name=_("disponibility"))
     order = models.PositiveSmallIntegerField(default=1, null=False, blank=False,
                                              verbose_name=_("order"))
+    _importing = None
 
     class Meta:
         verbose_name = "milestone"
@@ -66,6 +69,8 @@ class Milestone(WatchedModelMixin, models.Model):
         return "<Milestone {0}>".format(self.id)
 
     def save(self, *args, **kwargs):
+        if not self._importing:
+            self.modified_date = timezone.now()
         if not self.slug:
             self.slug = slugify_uniquely(self.name, self.__class__)
 

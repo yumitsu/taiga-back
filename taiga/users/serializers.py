@@ -30,7 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'full_name', 'full_name_display', 'email',
                   'github_id', 'color', 'bio', 'default_language',
                   'default_timezone', 'is_active', 'photo', 'big_photo')
-        read_only_fields = ('id', 'username', 'email', 'github_id')
+        read_only_fields = ('id', 'username', 'email', 'github_id', 'created_date', 'modified_date')
 
     def get_full_name_display(self, obj):
         return obj.get_full_name() if obj else ""
