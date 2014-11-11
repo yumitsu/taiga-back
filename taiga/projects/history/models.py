@@ -77,6 +77,18 @@ class HistoryEntry(models.Model):
     is_snapshot = models.BooleanField(default=False)
 
     @cached_property
+    def is_change(self):
+      return self.type == HistoryType.change
+
+    @cached_property
+    def is_create(self):
+      return self.type == HistoryType.create
+
+    @cached_property
+    def is_delete(self):
+      return self.type == HistoryType.delete
+
+    @cached_property
     def owner(self):
         pk = self.user["pk"]
         model = apps.get_model("users", "User")
@@ -111,6 +123,15 @@ class HistoryEntry(models.Model):
                 if description_diff:
                     key = "description_diff"
                     value = (None, description_diff)
+            elif key == "content":
+                content_diff = get_diff_of_htmls(
+                    self.diff[key][0],
+                    self.diff[key][1]
+                )
+
+                if content_diff:
+                    key = "content_diff"
+                    value = (None, content_diff)
             elif key in users_keys:
                 value = [resolve_value("users", x) for x in self.diff[key]]
             elif key == "watchers":
@@ -157,10 +178,14 @@ class HistoryEntry(models.Model):
 
                 for aid in set(tuple(oldattachs.keys()) + tuple(newattachs.keys())):
                     if aid in oldattachs and aid in newattachs:
-                        if oldattachs[aid] != newattachs[aid]:
+                        changes = make_diff_from_dicts(oldattachs[aid], newattachs[aid],
+                                                       excluded_keys=("filename", "url"))
+
+                        if changes:
                             change = {
-                                "filename": oldattachs[aid]["filename"],
-                                "changes": make_diff_from_dicts(oldattachs[aid], newattachs[aid])
+                                "filename": newattachs.get(aid, {}).get("filename", ""),
+                                "url": newattachs.get(aid, {}).get("url", ""),
+                                "changes": changes
                             }
                             attachments["changed"].append(change)
                     elif aid in oldattachs and aid not in newattachs:
@@ -185,4 +210,3 @@ class HistoryEntry(models.Model):
 
     class Meta:
         ordering = ["created_at"]
-

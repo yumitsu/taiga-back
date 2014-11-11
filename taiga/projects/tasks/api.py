@@ -22,7 +22,7 @@ from taiga.base.decorators import list_route
 from taiga.base.api import ModelCrudViewSet
 from taiga.projects.models import Project
 
-from taiga.projects.notifications import WatchedResourceMixin
+from taiga.projects.notifications.mixins import WatchedResourceMixin
 from taiga.projects.history.mixins import HistoryResourceMixin
 from taiga.projects.occ import OCCResourceMixin
 
@@ -52,13 +52,16 @@ class TaskViewSet(OCCResourceMixin, HistoryResourceMixin, WatchedResourceMixin, 
         super().pre_conditions_on_save(obj)
 
         if obj.milestone and obj.milestone.project != obj.project:
-            raise exc.PermissionDenied(_("You don't have permissions for add/modify this task."))
+            raise exc.WrongArguments(_("You don't have permissions for add/modify this task."))
 
         if obj.user_story and obj.user_story.project != obj.project:
-            raise exc.PermissionDenied(_("You don't have permissions for add/modify this task."))
+            raise exc.WrongArguments(_("You don't have permissions for add/modify this task."))
 
         if obj.status and obj.status.project != obj.project:
-            raise exc.PermissionDenied(_("You don't have permissions for add/modify this task."))
+            raise exc.WrongArguments(_("You don't have permissions for add/modify this task."))
+
+        if obj.milestone and obj.user_story and obj.milestone != obj.user_story.milestone:
+            raise exc.WrongArguments(_("You don't have permissions for add/modify this task."))
 
     @list_route(methods=["POST"])
     def bulk_create(self, request, **kwargs):

@@ -1,7 +1,6 @@
 # Copyright (C) 2014 Andrey Antukh <niwi@niwi.be>
 # Copyright (C) 2014 Jesús Espino <jespinog@gmail.com>
 # Copyright (C) 2014 David Barragán <bameda@dbarragan.com>
-# Copyright (C) 2014 Anler Hernández <hello@anler.me>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
 # published by the Free Software Foundation, either version 3 of the
@@ -16,34 +15,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
-import json
 
-from django.core.urlresolvers import reverse
 from .. import factories as f
 
+from taiga.export_import.service import project_to_dict
 
 pytestmark = pytest.mark.django_db
 
 
-def test_archived_filter(client):
-    user = f.UserFactory.create()
-    project = f.ProjectFactory.create(owner=user)
-    f.MembershipFactory.create(project=project, user=user)
-    f.UserStoryFactory.create(project=project)
-    f.UserStoryFactory.create(is_archived=True, project=project)
+def test_export_issue_finish_date(client):
+    issue = f.IssueFactory.create(finished_date="2014-10-22")
+    finish_date = project_to_dict(issue.project)["issues"][0]["finished_date"]
+    assert finish_date == "2014-10-22T00:00:00+0000"
 
-    client.login(user)
 
-    url = reverse("userstories-list")
-
-    data = {}
-    response = client.get(url, data)
-    assert len(json.loads(response.content.decode('utf-8'))) == 2
-
-    data = {"is_archived": 0}
-    response = client.get(url, data)
-    assert len(json.loads(response.content.decode('utf-8'))) == 1
-
-    data = {"is_archived": 1}
-    response = client.get(url, data)
-    assert len(json.loads(response.content.decode('utf-8'))) == 1
+def test_export_user_story_finish_date(client):
+    user_story = f.UserStoryFactory.create(finish_date="2014-10-22")
+    finish_date = project_to_dict(user_story.project)["user_stories"][0]["finish_date"]
+    assert finish_date == "2014-10-22T00:00:00+0000"

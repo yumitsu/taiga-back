@@ -19,6 +19,9 @@ import os
 import os.path as path
 import random
 import re
+import uuid
+
+from unidecode import unidecode
 
 from django.db import models
 from django.dispatch import receiver
@@ -27,9 +30,11 @@ from django.contrib.auth.models import UserManager, AbstractBaseUser
 from django.core import validators
 from django.utils import timezone
 from django.utils.encoding import force_bytes
+from django.template.defaultfilters import slugify
 
 from djorm_pgarray.fields import TextArrayField
 
+from taiga.auth.tokens import get_token_for_user
 from taiga.base.utils.slug import slugify_uniquely
 from taiga.base.utils.iterators import split_by_n
 from taiga.permissions.permissions import MEMBERS_PERMISSIONS
@@ -41,6 +46,9 @@ def generate_random_hex_color():
 
 def get_user_file_path(instance, filename):
     basename = path.basename(filename).lower()
+    base, ext = path.splitext(basename)
+    base = slugify(unidecode(base))
+    basename = "".join([base, ext])
 
     hs = hashlib.sha256()
     hs.update(force_bytes(timezone.now().isoformat()))
@@ -146,6 +154,24 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_full_name(self):
         return self.full_name or self.username or self.email
 
+    def save(self, *args, **kwargs):
+        get_token_for_user(self, "cancel_account")
+        super().save(*args, **kwargs)
+
+    def cancel(self):
+        self.username = slugify_uniquely("deleted-user", User, slugfield="username")
+        self.email = "{}@taiga.io".format(self.username)
+        self.is_active = False
+        self.full_name = "Deleted user"
+        self.color = ""
+        self.bio = ""
+        self.default_language = ""
+        self.default_timezone = ""
+        self.colorize_tags = True
+        self.token = None
+        self.github_id = None
+        self.set_unusable_password()
+        self.save()
 
 class Role(models.Model):
     name = models.CharField(max_length=200, null=False, blank=False,

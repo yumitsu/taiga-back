@@ -193,11 +193,13 @@ INSTALLED_APPS = [
     "taiga.timeline",
     "taiga.mdrender",
     "taiga.export_import",
+    "taiga.feedback",
 
     "rest_framework",
     "djmail",
     "django_jinja",
     "easy_thumbnails",
+    "raven.contrib.django.raven_compat",
 ]
 
 WSGI_APPLICATION = "taiga.wsgi.application"
@@ -270,6 +272,9 @@ AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend", # default
 )
 
+MAX_AGE_AUTH_TOKEN = None
+MAX_AGE_CANCEL_ACCOUNT = 30 * 24 * 60 * 60 # 30 days in seconds
+
 ANONYMOUS_USER_ID = -1
 
 MAX_SEARCH_RESULTS = 100
@@ -322,6 +327,15 @@ TAGS_PREDEFINED_COLORS = ["#fce94f", "#edd400", "#c4a000", "#8ae234",
                           "#204a87", "#888a85", "#ad7fa8", "#75507b",
                           "#5c3566", "#ef2929", "#cc0000", "#a40000",
                           "#2e3436",]
+
+# Feedback module settings
+FEEDBACK_ENABLED = True
+FEEDBACK_EMAIL = "support@taiga.io"
+
+# 0 notifications will work in a synchronous way
+# >0 an external process will check the pending notifications and will send them
+# collapsed during that interval
+CHANGE_NOTIFICATIONS_MIN_INTERVAL = 0 #seconds
 
 # NOTE: DON'T INSERT MORE SETTINGS AFTER THIS LINE
 TEST_RUNNER="django.test.runner.DiscoverRunner"

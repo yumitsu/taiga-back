@@ -21,7 +21,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 
 from taiga.projects.occ import OCCModelMixin
-from taiga.projects.notifications import WatchedModelMixin
+from taiga.projects.notifications.mixins import WatchedModelMixin
 from taiga.projects.mixins.blocked import BlockedMixin
 from taiga.base.tags import TaggedMixin
 
@@ -68,11 +68,11 @@ class UserStory(OCCModelMixin, WatchedModelMixin, BlockedMixin, TaggedMixin, mod
                                     related_name="userstories", through="RolePoints",
                                     verbose_name=_("points"))
 
-    backlog_order = models.IntegerField(null=False, blank=False, default=1,
+    backlog_order = models.IntegerField(null=False, blank=False, default=10000,
                                         verbose_name=_("backlog order"))
-    sprint_order = models.IntegerField(null=False, blank=False, default=1,
+    sprint_order = models.IntegerField(null=False, blank=False, default=10000,
                                        verbose_name=_("sprint order"))
-    kanban_order = models.IntegerField(null=False, blank=False, default=1,
+    kanban_order = models.IntegerField(null=False, blank=False, default=10000,
                                        verbose_name=_("sprint order"))
 
     created_date = models.DateTimeField(null=False, blank=False,
@@ -94,6 +94,7 @@ class UserStory(OCCModelMixin, WatchedModelMixin, BlockedMixin, TaggedMixin, mod
                                            verbose_name=_("is team requirement"))
     attachments = generic.GenericRelation("attachments.Attachment")
     generated_from_issue = models.ForeignKey("issues.Issue", null=True, blank=True,
+                                             on_delete=models.SET_NULL,
                                              related_name="generated_user_stories",
                                              verbose_name=_("generated from issue"))
     _importing = None

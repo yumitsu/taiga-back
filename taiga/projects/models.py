@@ -39,12 +39,6 @@ from taiga.projects.notifications.services import create_notify_policy_if_not_ex
 
 from . import choices
 
-# FIXME: this should to be on choices module (?)
-VIDEOCONFERENCES_CHOICES = (
-    ('appear-in', 'AppearIn'),
-    ('talky', 'Talky'),
-)
-
 
 class Membership(models.Model):
     # This model stores all project memberships. Also
@@ -69,6 +63,9 @@ class Membership(models.Model):
 
     invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="ihaveinvited+",
                                    null=True, blank=True)
+
+    invitation_extra_text = models.TextField(null=True, blank=True,
+                                   verbose_name=_("invitation extra text"))
 
     def clean(self):
         # TODO: Review and do it more robust
@@ -118,7 +115,7 @@ class ProjectDefaults(models.Model):
 
 
 class Project(ProjectDefaults, TaggedMixin, models.Model):
-    name = models.CharField(max_length=250, unique=True, null=False, blank=False,
+    name = models.CharField(max_length=250, null=False, blank=False,
                             verbose_name=_("name"))
     slug = models.SlugField(max_length=250, unique=True, null=False, blank=True,
                             verbose_name=_("slug"))
@@ -134,7 +131,7 @@ class Project(ProjectDefaults, TaggedMixin, models.Model):
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="projects",
                                      through="Membership", verbose_name=_("members"),
                                      through_fields=("project", "user"))
-    total_milestones = models.IntegerField(default=0, null=True, blank=True,
+    total_milestones = models.IntegerField(default=0, null=False, blank=False,
                                            verbose_name=_("total of milestones"))
     total_story_points = models.FloatField(default=0, verbose_name=_("total story points"))
 
@@ -189,7 +186,8 @@ class Project(ProjectDefaults, TaggedMixin, models.Model):
             self.modified_date = timezone.now()
 
         if not self.slug:
-            base_slug = slugify_uniquely(self.name, self.__class__)
+            base_name = "{}-{}".format(self.owner.username, self.name)
+            base_slug = slugify_uniquely(base_name, self.__class__)
             slug = base_slug
             for i in arithmetic_progression():
                 if not type(self).objects.filter(slug=slug).exists() or i > 100:
@@ -219,22 +217,27 @@ class Project(ProjectDefaults, TaggedMixin, models.Model):
         if roles.count() == 0:
             return
 
-        # Get point instance that represent a null/undefined
-        try:
-            null_points_value = self.points.get(value=None)
-        except Points.DoesNotExist:
-            null_points_value = None
-
         # Iter over all project user stories and create
         # role point instance for new created roles.
         if user_stories is None:
             user_stories = self.user_stories.all()
 
-        for story in user_stories:
-            story_related_roles = Role.objects.filter(role_points__in=story.role_points.all())\
-                                              .distinct()
-            new_roles = roles.exclude(id__in=story_related_roles)
-            new_rolepoints = [RolePoints(role=role, user_story=story, points=null_points_value)
+        # Get point instance that represent a null/undefined
+        # The current model allows dulplicate values. Because
+        # of it, we should get all poins with None as value
+        # and use the first one.
+        # In case of that not exists, creates one for avoid
+        # unxpected errors.
+        none_points = list(self.points.filter(value=None))
+        if none_points:
+            null_points_value = none_points[0]
+        else:
+            null_points_value = Points.objects.create(name="?", value=None, project=self)
+
+        for us in user_stories:
+            usroles = Role.objects.filter(role_points__in=us.role_points.all()).distinct()
+            new_roles = roles.exclude(id__in=usroles)
+            new_rolepoints = [RolePoints(role=role, user_story=us, points=null_points_value)
                               for role in new_roles]
             RolePoints.objects.bulk_create(new_rolepoints)
 

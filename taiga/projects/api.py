@@ -66,20 +66,6 @@ class ProjectViewSet(ModelCrudViewSet):
         self.check_permissions(request, 'stats', project)
         return Response(services.get_stats_for_project(project))
 
-    @detail_route(methods=['post'])
-    def star(self, request, pk=None):
-        project = self.get_object()
-        self.check_permissions(request, 'star', project)
-        votes_service.add_vote(project, user=request.user)
-        return Response(status=status.HTTP_200_OK)
-
-    @detail_route(methods=['post'])
-    def unstar(self, request, pk=None):
-        project = self.get_object()
-        self.check_permissions(request, 'unstar', project)
-        votes_service.remove_vote(project, user=request.user)
-        return Response(status=status.HTTP_200_OK)
-
     @detail_route(methods=['get'])
     def issues_stats(self, request, pk=None):
         project = self.get_object()
@@ -93,16 +79,24 @@ class ProjectViewSet(ModelCrudViewSet):
         return Response(services.get_issues_filters_data(project))
 
     @detail_route(methods=['get'])
-    def tags(self, request, pk=None):
-        project = self.get_object()
-        self.check_permissions(request, 'tags', project)
-        return Response(services.get_all_tags(project))
-
-    @detail_route(methods=['get'])
     def tags_colors(self, request, pk=None):
         project = self.get_object()
         self.check_permissions(request, 'tags_colors', project)
         return Response(dict(project.tags_colors))
+
+    @detail_route(methods=['post'])
+    def star(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, 'star', project)
+        votes_service.add_vote(project, user=request.user)
+        return Response(status=status.HTTP_200_OK)
+
+    @detail_route(methods=['post'])
+    def unstar(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, 'unstar', project)
+        votes_service.remove_vote(project, user=request.user)
+        return Response(status=status.HTTP_200_OK)
 
     @detail_route(methods=['get'])
     def fans(self, request, pk=None):
@@ -193,6 +187,7 @@ class MembershipViewSet(ModelCrudViewSet):
 
         data = serializer.data
         project = models.Project.objects.get(id=data["project_id"])
+        invitation_extra_text = data.get("invitation_extra_text", None)
         self.check_permissions(request, 'bulk_create', project)
 
         # TODO: this should be moved to main exception handler instead
@@ -201,6 +196,7 @@ class MembershipViewSet(ModelCrudViewSet):
         try:
             members = services.create_members_in_bulk(data["bulk_memberships"],
                                                       project=project,
+                                                      invitation_extra_text=invitation_extra_text,
                                                       callback=self.post_save,
                                                       precall=self.pre_save)
         except ValidationError as err:
@@ -256,20 +252,14 @@ class RolesViewSet(ModelCrudViewSet):
     filter_backends = (filters.CanViewProjectFilterBackend,)
     filter_fields = ('project',)
 
-    @tx.atomic
-    def destroy(self, request, *args, **kwargs):
-        moveTo = self.request.QUERY_PARAMS.get('moveTo', None)
-        if moveTo is None:
-            return super().destroy(request, *args, **kwargs)
+    def pre_delete(self, obj):
+        move_to = self.request.QUERY_PARAMS.get('moveTo', None)
+        if move_to:
+            role_dest = get_object_or_404(self.model, project=obj.project, id=move_to)
+            qs = models.Membership.objects.filter(project_id=obj.project.pk, role=obj)
+            qs.update(role=role_dest)
 
-        obj = self.get_object_or_none()
-
-        moveItem = get_object_or_404(self.model, project=obj.project, id=moveTo)
-
-        self.check_permissions(request, 'destroy', obj)
-
-        models.Membership.objects.filter(project=obj.project, role=obj).update(role=moveItem)
-        return super().destroy(request, *args, **kwargs)
+        super().pre_delete(obj)
 
 
 # User Stories commin ViewSets
@@ -317,19 +307,19 @@ class PointsViewSet(ModelCrudViewSet, BulkUpdateOrderMixin):
 class MoveOnDestroyMixin(object):
     @tx.atomic
     def destroy(self, request, *args, **kwargs):
-        moveTo = self.request.QUERY_PARAMS.get('moveTo', None)
-        if moveTo is None:
+        move_to = self.request.QUERY_PARAMS.get('moveTo', None)
+        if move_to is None:
             return super().destroy(request, *args, **kwargs)
 
         obj = self.get_object_or_none()
 
-        moveItem = get_object_or_404(self.model, project=obj.project, id=moveTo)
+        move_item = get_object_or_404(self.model, project=obj.project, id=move_to)
 
         self.check_permissions(request, 'destroy', obj)
-        kwargs = {self.move_on_destroy_related_field: moveItem}
+        kwargs = {self.move_on_destroy_related_field: move_item}
         self.move_on_destroy_related_class.objects.filter(project=obj.project, **{self.move_on_destroy_related_field: obj}).update(**kwargs)
         if getattr(obj.project, self.move_on_destroy_project_default_field) == obj:
-            setattr(obj.project, self.move_on_destroy_project_default_field, moveItem)
+            setattr(obj.project, self.move_on_destroy_project_default_field, move_item)
             obj.project.save()
         return super().destroy(request, *args, **kwargs)
 

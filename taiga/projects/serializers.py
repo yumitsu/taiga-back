@@ -179,6 +179,15 @@ class ProjectSerializer(ModelSerializer):
             return is_project_owner(self.context["request"].user, obj)
         return False
 
+    def validate_total_milestones(self, attrs, source):
+        """
+        Check that total_milestones is not null, it's an optional parameter but
+        not nullable in the model. 
+        """
+        value = attrs[source]
+        if value is None:
+            raise serializers.ValidationError("Total milestones must be major or equal to zero")
+        return attrs
 
 class ProjectDetailSerializer(ProjectSerializer):
     roles = serializers.SerializerMethodField("get_roles")
@@ -251,3 +260,4 @@ class MemberBulkSerializer(RoleExistsValidator, serializers.Serializer):
 class MembersBulkSerializer(ProjectExistsValidator, serializers.Serializer):
     project_id = serializers.IntegerField()
     bulk_memberships = MemberBulkSerializer(many=True)
+    invitation_extra_text = serializers.CharField(required=False, max_length=255)

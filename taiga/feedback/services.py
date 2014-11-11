@@ -14,11 +14,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from django_jinja import library
-from django_sites.utils import static
+from django.conf import settings
 
-register = library.Library()
+from djmail.template_mail import MagicMailBuilder
 
-@register.global_function
-def full_url_static(text) -> str:
-    return static(text)
+
+def send_feedback(feedback_entry, extra):
+    support_email = settings.FEEDBACK_EMAIL
+
+    if support_email:
+        mbuilder = MagicMailBuilder()
+        email = mbuilder.feedback_notification(support_email, {"feedback_entry": feedback_entry,
+                                                               "extra": extra})
+        email.send()
